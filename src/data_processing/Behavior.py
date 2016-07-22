@@ -2,14 +2,17 @@
 # Last update: 07/21/16
 
 
-import time
 from scipy import stats
 import numpy as np
 import matplotlib.pyplot as plt
-import glob
 import os
+from IPython.core.pylabtools import figsize
+
+
 
 ccode = ['g', 'b', 'y', 'm', 'c', 'r']
+
+
 
 class Behavioral_test(object):
     def __init__(self, dset, tflag):
@@ -20,22 +23,67 @@ class Behavioral_test(object):
         self.tflag = tflag - tflag[0] 
         self.ds_total = None
         self.trial_phase = {} 
-       
+        self.n_trial = len(tflag) 
         
-    def session_split(self, trial_name = None):
+        
+    def session_split(self):
         # assume data is already corrected by the time offset. The result is saved in trial_phase  
         # take out the first column of behavior data. Assume that the tflag and tbehave are sharing unit
         t_behave = self.data[:,0] #
         t_idx = np.searchsorted(t_behave, self.tflag)
         nsta = 0 
         
-        for idx in np.arange(1, len(t_idx)):
+        for idx in np.arange(1, self.n_trial):
             nend = t_idx[idx]
             self.trial_phase[idx-1] = self.data[nsta:nend, :]
             nsta = nend 
-            
-        # updated self.trial_phase 
         
+        # for the last trial, directly append one more 
+        self.trial_phase[idx] = self.data[nsta:] # directly to the end
+        return self.trial_phase
+
+    def phase_average(self):
+        # calculate phase average from the well-spliteed trial_phase 
+        # output: phase average
+        phase_mean = np.zeros([self.n_trial, self.data.shape[1]-1])
+        phase_std = np.zeros_like(phase_mean)
+        
+        for itrial in np.arange(self.n_trial):
+            phase_mean[itrial, :] = np.mean(self.trial_phase[itrial][:,1:], axis = 0)
+            phase_std[itrial, :] = np.std(self.trial_phase[itrial][:,1:], axis = 0)
+            # update phase_average
+        # interleave two arrays
+        self.phase_stat = np.empty((phase_mean.shape[0], phase_mean.shape[1]+phase_std.shape[1]))
+        self.phase_stat[:,::2] = phase_mean
+        self.phase_stat[:,1::2] = phase_std 
+        return self.phase_stat
+
+    def phase_barplot(self, n_display, phase_name, n_col, n_period = 4, n_offset = 1):
+        # plot the bar chart of the same group, starting from n_offset 
+        # n_display: which phase will be plotted?  
+        # self.phase_stat is saved 
+        # n_col: which column of the data should be plotted, just a number
+        n_rep = int((self.n_trial-n_offset)/n_period)
+        ind = np.arange(n_rep)*(len(n_display)+1)
+        fig, ax = plt.subplots(figsize = (8,5))
+        bar_ax = {}
+        for idis in np.arange(len(n_display)): # nd start from 1 instead of 0
+            p_offset = n_offset + (n_display[idis]-1) # phase offset 
+            bar_y = self.phase_stat[p_offset::n_period, 2*n_col]
+            err_y = self.phase_stat[p_offset::n_period, 2*n_col+1]
+            bar_ax[idis] = ax.bar(ind+idis, bar_y, color = ccode[idis], yerr = err_y) 
+            
+        ax.legend(phase_name, fontsize = 10)
+        ax.set_ylim([0,9])
+            
+        ax.set_xticks(ind+(len(n_display)+1)/2)
+        ax.set_xticklabels(np.arange(n_rep)+1)
+        
+        
+        return fig
+        
+        
+
     
     def session_merge(self, tflag):
         # merge the counting data with the time flags. The time offset is corrected.
@@ -95,10 +143,7 @@ class Behavioral_test(object):
         fig_mean.savefig(path+'/'+fname_mean)
         
         # calculate the latency of the sessions
-        
-    def interval_counting(self, intv = 5):
-        # intv: the time base of counting 
-        # output: the average plus/minus 
+    
         
     
     
@@ -106,17 +151,13 @@ def session_split(dset, tflag, NI, n_offset = 1):
     # dset: dataset 
     # tflag: time flag
     # NI: Initially, how many larvae are on the positive side? 
-    
     NL = len(tflag)-n_offset
-    
-
     tflag = np.column_stack((tflag[n_offset:], np.zeros(NL)))
     dset[0,1] = NI
     ds_total = np.concatenate((dset, tflag), axis  = 0)
     ds_total = ds_total[ds_total[:,0].argsort()]
     flags = np.where(ds_total[:,1] == 0)[0] # the position of flags
     ds_total[:,1] = ds_total[:,1].cumsum()
-    
 
     t0 = ds_total[0,0]
     ds_total[:,0] -= t0
@@ -174,7 +215,6 @@ def plot_sessions(gcount, pname, keylist):
 
 
 
-    
 
 def session_ttest(gcount, nlist, nsess = 4 ):
     # n1: the session label
@@ -197,37 +237,3 @@ def session_ttest(gcount, nlist, nsess = 4 ):
             p_val[jj,ii] = p_val[ii,jj]
  
     return t_val, p_val
-
-
-# def timing_stat():
-
-
-
-
-def main():
-    dph = '/home/sillycat/Documents/Zebrafish/Behavioral/Data/Behavior_test4/'
-    #Please modify the data path above #
-
-    dset_list = glob.glob(dph+'Jul*G*D*.npy')
-    TF_list = glob.glob(dph + 'TF*G*D*.npy')
-    
-    dset_list.sort(key = os.path.getmtime) # sort the files based on modification time 
-    TF_list.sort(key = os.path.getmtime)
-    c_list = zip(dset_list, TF_list) # zip is a cool function in python! 
-#     nlist = [0, 1, 2, 3]
-    for ds_name, tf_name in c_list:
-        dset = np.load(ds_name)
-        tflag = np.load(tf_name)
-        fig_name = dph+ 'plot_'+os.path.basename(tf_name)[3:-4]
-#         print(fig_name)
-#         gcount = session_split(dset, tflag, 3)
-
-        BT = Behavioral_test(dset,tflag, 3)
-        latency = BT.session_latency(1)
-        BT.latency_plot(fig_name, latency)         
-
-#         
-if __name__ == '__main__':
-    main()
-
-# We will define more functions soon for other purposes, and all of these functions will make a python module! 
