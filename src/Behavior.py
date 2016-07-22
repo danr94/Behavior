@@ -1,4 +1,7 @@
 # Always import whatever libraries you need before writing functions and r
+# Last update: 07/21/16
+
+
 import time
 from scipy import stats
 import numpy as np
@@ -9,19 +12,27 @@ import os
 ccode = ['g', 'b', 'y', 'm', 'c', 'r']
 
 class Behavioral_test(object):
-    def __init__(self, dset, tflag, NI):
+    def __init__(self, dset, tflag):
+        # time offset corrected. 
+        # self.data can have multiple columns, but tflag is only one column.
         
         self.data = dset 
-        self.data[0,1] = NI
-        self.NI = NI
-        self.ds_total = self.session_merge(tflag)
-        self.flag = np.where(self.ds_total[:,1] == 0)[0]  # mark the flag position
+        self.tflag = tflag - tflag[0] 
+        self.ds_total = None
+       
+        
+    def session_split(self):
+        # assume data is already corrected by the time offset. 
     
     def session_merge(self, tflag):
+        # merge the counting data with the time flags. The time offset is corrected.
+        # 
+        
         NL = len(tflag)
         tflag = np.column_stack((tflag, np.zeros(NL)))
         ds_total = np.concatenate((self.data, tflag), axis  = 0)
         self.ds_total = ds_total[ds_total[:,0].argsort()] # self.ds_total
+        self.flag = np.where(self.ds_total[:,1] == 0)[0]  # mark the flag position
         return self.ds_total
     
     
@@ -72,8 +83,10 @@ class Behavioral_test(object):
         
         # calculate the latency of the sessions
         
-    
-#     ds_total = ds_total[ds_total[:,0].argsort()]
+    def interval_counting(self, intv = 5):
+        # intv: the time base of counting 
+        # output: the average plus/minus 
+        
     
     
 def session_split(dset, tflag, NI, n_offset = 1):
@@ -201,20 +214,6 @@ def main():
         BT.latency_plot(fig_name, latency)         
 
 #         
-#         t_val, p_val = session_ttest(gcount, nlist)
-#         print(ds_name)
-#         print(p_val[0,2])
-#         fig = plt.figure()
-#         im = plt.imshow(p_val, interpolation='none',cmap = 'RdBu')
-#         plt.colorbar(im)
-#         plt.show()
-#         plt.close('all')
-#         
-#         
-#         if(not (np.isscalar(gcount))):
-#             plot_sessions(gcount, fig_name , np.arange(1,13))
-
-
 if __name__ == '__main__':
     main()
 

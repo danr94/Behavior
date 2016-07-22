@@ -18,11 +18,11 @@ column 3: syringe pump on
 """
 
 dia_1ml = 4.699
-flowrate = 2000
+flowrate = 4000
 pin_LED = 13
 pin_Servo = 9
 CONFIG_CS = np.array([15,1,0,0]) # configuration for conditioned stimulus 
-CONFIG_US = np.array([20,1,1,0]) # configuration for unconditioned stimulus (feeding)
+CONFIG_US = np.array([10,1,1,0]) # configuration for unconditioned stimulus (feeding)
 CONFIG_REST = np.array([30,0,0,0]) # configuration for inter-trial sessions (the duration is subject to change)
 CONFIG_INTER = np.array([-1,0,0,0])
 Nrepeat = 20
@@ -117,7 +117,7 @@ class Assay():
         # then, we need to update duration of intersessions 
         inter_pos = self.CS_config[:,0] < 0  # take out the positions of intersessions, a boolean array 
         inter_dur = self.CS_config[inter_pos,0]
-        self.CS_config[inter_pos,0] = np.random.randint(30, 60, size = len(inter_dur)) 
+        self.CS_config[inter_pos,0] = np.random.randint(40, 70, size = len(inter_dur)) 
         
         print(self.CS_config)
         self.duration = self.CS_config[:,0].sum()/60.0
@@ -223,7 +223,7 @@ class Assay():
         
         
 def main():
-    Tflag_name = 'TF_G2_D2'
+    Tflag_name = 'TF_G0_D3_condition'
     Behave_assay = Assay(Tflag_name, Nrepeat)
     Behave_assay.run_through(False)
     print(Behave_assay.onset)
