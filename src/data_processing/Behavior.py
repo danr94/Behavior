@@ -83,6 +83,33 @@ class Behavioral_test(object):
         return fig
         
         
+        
+    def phase_barplot_diff(self, n_display, phase_name, n_1, n_2,  n_period = 4, n_offset = 1):
+        # plot the bar chart of the same group, starting from n_offset 
+        # n_display: which phase will be plotted?  
+        # self.phase_stat is saved 
+        # n_col: which column of the data should be plotted, just a number
+        n_rep = int((self.n_trial-n_offset)/n_period)
+        ind = np.arange(n_rep)*(len(n_display)+1)
+        fig, ax = plt.subplots(figsize = (8,5))
+        
+        bar_y = self.phase_stat[n_offset::n_period, 2*n_1] - self.phase_stat[n_offset::n_period, 2*n_2]
+        
+        for idis in np.arange(1,len(n_display)): # nd start from 1 instead of 0
+            p_offset = n_offset + (n_display[idis]-1) # phase offset 
+            bar_y += self.phase_stat[p_offset::n_period, 2*n_1] - self.phase_stat[p_offset::n_period, 2*n_2]
+        
+        
+        ax.bar(ind+idis, bar_y, color = ccode[0]) 
+        ax.legend(phase_name, fontsize = 10)
+        ax.set_ylim([-10,15])
+            
+        ax.set_xticks(ind+(len(n_display)+1)/2)
+        ax.set_xticklabels(np.arange(n_rep)+1)
+        
+        
+        return fig, bar_y
+        
 
     
     def session_merge(self, tflag):

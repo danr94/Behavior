@@ -4,6 +4,7 @@ from Behavior import Behavioral_test
 import glob
 import os
 import numpy as np
+from scipy import stats
 import matplotlib.pyplot as plt 
 
 
@@ -13,15 +14,20 @@ def main():
     #Please modify the data path above #
 
 
-    dset_list = glob.glob(dph+'D1*l.csv')
-    TF_list = glob.glob(dph + 'TF*G*D1*l.npy')
+    dset_list = glob.glob(dph+'D1*.csv')
+    TF_list = glob.glob(dph + 'TF*G*D1*.npy')
     
+    
+    
+    delim = [',',';']
     dset_list.sort(key = os.path.getmtime) # sort the files based on modification time 
     TF_list.sort(key = os.path.getmtime)
     c_list = zip(dset_list, TF_list) # zip is a cool function in python! 
 #     nlist = [0, 1, 2, 3]
+    ii = 0
+    bar_y = {}
     for ds_name, tf_name in c_list:
-        dset = np.genfromtxt(ds_name,delimiter = ',', skip_header =1)
+        dset = np.genfromtxt(ds_name,delimiter = delim[ii], skip_header =1)
         dset[:,0]-=dset[0,0]
         dset[:,0]/=29.98
         tflag = np.load(tf_name)
@@ -31,14 +37,19 @@ def main():
         print(ds_name)
         print(tf_name)
 #         print(fig_name)
-
+        print(tflag[29:33]*29.98+338)
+        
+        
         BT = Behavioral_test(dset,tflag)
         BT.session_split()
         phase_stat = BT.phase_average()
-        fig_1 = BT.phase_barplot([1,2,4], phase_name=['LED', 'LED+para', 'off'], n_col = 0)
+        
+        fig_1 = BT.phase_barplot([1,2,3], phase_name=['LED', 'LED+para', 'LED'], n_col = 0)
         fig_1.savefig(fig_name+'_pos')
-        fig_2 = BT.phase_barplot([1,2,4], phase_name=['LED', 'LED+para', 'off'], n_col = 1)
+        fig_2 = BT.phase_barplot([1,2,3], phase_name=['LED', 'LED+para', 'LED'], n_col = 1)
         fig_2.savefig(fig_name+'_neg')
+        fig_3,bar_y[ii] = BT.phase_barplot_diff([1,2,3], phase_name=['LED', 'LED+para', 'LED'], n_1 = 0, n_2=1 )
+        fig_3.savefig(fig_name+'_diff')
         
         plt.clf()  
         
@@ -64,8 +75,24 @@ def main():
         ax_0.legend(['+', '-'], fontsize = 12)
         
         fig_0.savefig(fig_name+'_raw')
-
+        ii+=1
         
+
+    t_var, p_var = stats.ttest_rel(bar_y[0], bar_y[1])
+    fig_comp, ax_comp = plt.subplots(figsize = (8,4))
+    ax_comp.bar(np.arange(20)*3, bar_y[1]/300., color = 'g')
+    ax_comp.bar(np.arange(20)*3+1, bar_y[0]/300., color = 'y')
+    ax_comp.set_ylim([-0.03,0.052])
+    ax_comp.set_xlim([-1, 21])
+    ax_comp.legend(['Condition', 'Control'])
+    ax_comp.set_xticks(np.arange(20)*3+1.5)
+    ax_comp.set_xticklabels(np.arange(20)+1)
+    
+    fig_comp.savefig(dph+'bar_compare')
+    
+    
+    
+    print(t_var, p_var)
         #         latency = BT.session_latency(1)
 #         BT.latency_plot(fig_name, latency)         
 
